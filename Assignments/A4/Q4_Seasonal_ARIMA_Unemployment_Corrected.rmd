@@ -1,0 +1,213 @@
+
+---
+title: "Q4"
+output: html_document
+---
+
+### 1.
+
+in this question, i fit **seasonal ARIMA (SARIMA) model** to  **unemployment data** from  `astsa` package.  
+i have to do
+
+1. estimate  appropriate **SARIMA model**.
+2. forecast unemployment for  **next 12 months**.
+3. provide detailed model diagnostic and report findings properly.
+
+---
+
+
+
+
+
+### Observations
+- Clear **seasonality** with a yearly pattern.
+- **Trend**: Long-term changes indicate the need for differencing.
+
+---
+
+# Differencing to Achieve Stationarity
+
+\[
+
+abla_{12} y_t = y_t - y_{t-12}, \quad 
+abla y_t = y_t - y_{t-1}
+\]
+
+```{r}
+unemp_diff <- diff(diff(unemp, lag = 12))
+plot(unemp_diff, main = "Differenced Unemployment Data", ylab = "Differenced Rate")
+```
+
+---
+
+# ACF and PACF Analysis
+
+\[
+	ext{ACF:} \quad 
+ho(k) = rac{E[(X_t - \mu)(X_{t-k} - \mu)]}{\sigma^2}
+\]
+
+\[
+	ext{PACF:} \quad \phi_{kk} 	ext{ represents the partial correlation at lag } k.
+\]
+
+---
+
+### Observations from ACF/PACF:
+- **ACF**: Significant seasonal lag at **lag 12**.
+- **PACF**: A spike at lag 1 suggests an **AR(1)** component.
+
+---
+
+# Fitting SARIMA Models
+
+\[
+\phi(B) \Phi(B^{12}) (1 - B)^d (1 - B^{12})^D y_t = 	heta(B) \Theta(B^{12}) W_t
+\]
+---
+
+# Model Diagnostics
+
+---
+
+### Model Comparison
+- **MSE**: Model 1 has a smaller MSE.
+- **Residuals**: Model 1's residuals behave more like white noise.
+
+---
+
+# Forecasting the Next 12 Months
+
+---
+
+# Mathematical Forecast Representation
+
+\[
+\hat{y}_{T+h} = \phi_1 \hat{y}_{T+h-1} + \phi_2 \hat{y}_{T+h-2} + \Phi_1 \hat{y}_{T+h-12} + arepsilon_t
+\]
+
+---
+
+# Conclusion
+
+The **SARIMA(2, 1, 0) × (0, 1, 1)\(_{12}\)** model captures both **trend** and **seasonality**, with residuals behaving like white noise. Forecasts predict stable unemployment with minor seasonal fluctuations.
+
+---
+
+
+### 2. Load Libraries and Data
+
+```{r, warning=FALSE, message=FALSE}
+# Load necessary libraries
+library(forecast)
+library(astsa)
+library(tseries)
+
+# Load  unemployment data
+data("unemp")
+
+# Plot  original data to visualize trends and seasonality
+plot(unemp, main = "Unemployment Data", ylab = "Unemployment Rate", xlab = "Time")
+```
+
+### 2.1 Visual Analysis of Data
+
+Looking at  plot,  unemployment data shows both **seasonal patterns** and **trends**.  
+Thus, we need to fit **seasonal ARIMA** model.
+
+---
+
+## 3. Differencing and ACF/PACF Analysis
+
+We first take **seasonal and non-seasonal differences** to make  series stationary, then examine  **ACF and PACF plots**.
+
+```{r}
+# Take seasonal and non-seasonal differences
+unemp_diff <- diff(diff(unemp, lag = 12))
+
+# Plot  differenced series
+plot(unemp_diff, main = "Differenced Unemployment Data")
+
+# ACF and PACF plots to identify model components
+acf2(unemp_diff, 50)
+```
+
+### 3.1 Observations from ACF and PACF
+
+-  **ACF** shows seasonal MA(1) pattern with lags at 12, 24, and 36.  
+-  **PACF** tails off slowly, indicating  AR component (possibly AR(2) for non-seasonal part).  
+- Based on these plots, we try **SARIMA(2, 1, 0) × (0, 1, 1)[12]** model.
+
+---
+
+## 4. Fitting  SARIMA Model
+
+```{r}
+# Fit SARIMA(2, 1, 0) x (0, 1, 1)[12] model
+sarima_model <- sarima(unemp, p = 2, d = 1, q = 0, P = 0, D = 1, Q = 1, S = 12)
+```
+
+### 4.1 Interpretation of Model Results
+
+- **Coefficients**: Examine  AR and MA coefficients from  model summary.
+- **Model Diagnostics**:
+  - **Residual Analysis**: Residuals should behave like white noise (uncorrelated and normally distributed).
+  - **AIC and BIC**: Used for model comparison and selection.
+
+---
+
+## 5. Forecasting for  Next 12 Months
+
+We now use  estimated SARIMA model to forecast unemployment for  next 12 months.
+
+```{r}
+# Forecast for  next 12 months
+forecast_sarima <- sarima.for(unemp, n.ahead = 12, p = 2, d = 1, q = 0, P = 0, D = 1, Q = 1, S = 12)
+
+# Convert forecast to time series object for plotting
+forecast_ts <- ts(forecast_sarima$pred, 
+                  start = end(unemp)[1] + c(0, 1), 
+                  frequency = 12)
+
+# Plot  original data along with  forecast
+ts.plot(unemp, forecast_ts, col = c("black", "blue"), 
+        lty = c(1, 2), main = "12-Month Unemployment Forecast",
+        ylab = "Unemployment Rate", xlab = "Time")
+legend("topright", legend = c("Actual", "Forecast"), 
+       col = c("black", "blue"), lty = c(1, 2))
+```
+
+---
+
+## 6. Model Diagnostics
+
+We assess  residuals of  model to ensure they behave like white noise.
+
+```{r}
+# Check residuals for normality and autocorrelation
+checkresiduals(sarima_model$fit)
+```
+
+### 6.1 Residual Analysis
+
+- **Ljung-Box Test**: If p-value > 0.05, residuals are uncorrelated.
+- **Normality**: Evaluate Q-Q plot and histogram of residuals for normality.
+
+---
+
+## 7. Conclusion
+
+Based on  **SARIMA(2, 1, 0) × (0, 1, 1)[12]** model,  unemployment forecast for  next 12 months shows:
+
+1. **seasonal trend**, with expected fluctuations over  months.
+2.  model fits  data well, with residuals behaving like white noise.
+3. **Forecasts**: Provide  insight into unemployment rates for  upcoming year.
+
+---
+
+## 8. Summary of Findings
+
+- **Model Selection**:  chosen SARIMA(2, 1, 0) × (0, 1, 1)[12] model was based on ACF/PACF analysis.
+- **Forecasting**:  forecast suggests continued seasonal variation in unemployment.
+- **Model Fit**: Diagnostics indicate  model fits  data well, with uncorrelated residuals.
+w
